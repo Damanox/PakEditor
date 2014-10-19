@@ -1,0 +1,14 @@
+{
+	"name": "pakeditor",
+	"description": "Archeage Pak Editor",
+	"copyright": "Copyright © 2014, Beast",
+	"authors": ["Beast"],
+    "targetPath": "bin",
+	"targetType": "executable",
+	"sourceFiles-windows-x86-dmd": ["lib/xlpack.lib"],
+	"copyFiles-windows-x86": ["lib/xlpack.dll"],
+	"lflags-windows-dmd": ["/subsystem:windows"],
+	"dependencies": {
+		"dgui": ">=1.0.1",
+	}
+}
