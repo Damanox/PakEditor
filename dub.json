@@ -9,6 +9,6 @@
 	"copyFiles-windows-x86": ["lib/xlpack.dll"],
 	"lflags-windows-dmd": ["/subsystem:windows"],
 	"dependencies": {
-		"dgui": ">=1.0.1",
+		"dgui": "~master",
 	}
 }

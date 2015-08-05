@@ -74,8 +74,9 @@ private :
     {
         if(!_node.hasNodes)
         {
+            _main.logInfo("Экспорт файла " ~ _node.text ~ "... ");
             auto flag = Copy(("/master/" ~ _path).toStringz(), ("/fs/export/" ~ _path).toStringz());
-            _main.logInfo("File " ~ _node.text ~ (!flag ? " Not" : "") ~ " Copy!\r\n");
+            _main.logInfo((flag ? "Выполнено" : "Ошибка") ~ "\r\n");
         }
         else
             exportDir(_path);
@@ -83,18 +84,9 @@ private :
 
     void exportDir(string parent)
     {
-        auto entries = getDir("/master/" ~ parent ~ "/");
-        foreach(entry; entries)
-        {
-            auto path = parent ~ "/" ~ entry.name;
-            if(!entry.isDir)
-            {
-                auto flag = Copy(("/master/" ~ path).toStringz(), ("/fs/export/" ~ path).toStringz());
-                _main.logInfo("File " ~ entry.name ~ (!flag ? " Not" : "") ~ " Copy!\r\n");
-            }  
-            else
-                exportDir(path);             
-        }
+        _main.logInfo("Экспорт директории " ~ _node.text ~ "... ");
+		auto flag = CopyDir(("/master/" ~ parent).toStringz(), ("/fs/export/" ~ parent).toStringz());
+        _main.logInfo((flag ? "Выполнено" : "Ошибка") ~ "\r\n");
     }
 }
 
@@ -115,20 +107,24 @@ class ImportTask : Thread
 private :
     void run()
     {
-        foreach(DirEntry entry; dirEntries(dirName(_main.filename) ~ "/import" ~ _path, SpanMode.shallow))
+        _main.logInfo("Импорт директории " ~ _node.text ~ "... ");
+        auto flag = CopyDir(("/fs/import" ~ _path).toStringz(), ("/master" ~ _path).toStringz());
+        _main.logInfo((flag ? "Выполнено" : "Ошибка") ~ "\r\n");
+        if(flag)
         {
-            if(!entry.isDir)
+            foreach(DirEntry entry; dirEntries(dirName(_main.filename) ~ "/import" ~ _path, SpanMode.shallow))
             {
-                auto flag = Copy(("/fs/import" ~ _path ~ "/" ~ entry.baseName).toStringz(), ("/master" ~ _path ~ "/" ~ entry.baseName).toStringz());
-                _main.logInfo("File " ~ entry.baseName ~ (!flag ? " Not" : "") ~ " Copy!\r\n");
-                if(flag && !_node.contains(entry.baseName))
-                    _node.addNode(entry.baseName);
-            }
-            else
-            {
-                auto child = _node.addNode(entry.baseName);
-                child.tag = true;
-                importDir(_path ~ "/" ~ entry.baseName, child);
+                if(!entry.isDir)
+                {
+                    if(!_node.contains(entry.baseName))
+                        _node.addNode(entry.baseName);
+                }
+                else
+                {
+                    auto child = _node.addNode(entry.baseName);
+                    child.tag = true;
+                    importDir(_path ~ "/" ~ entry.baseName, child);
+                }
             }
         }
     }
@@ -139,9 +135,7 @@ private :
         {
             if(!entry.isDir)
             {
-                auto flag = Copy(("/fs/import" ~ path ~ "/" ~ entry.baseName).toStringz(), ("/master" ~ path ~ "/" ~ entry.baseName).toStringz());
-                _main.logInfo("File " ~ entry.baseName ~ (!flag ? " Not" : "") ~ " Copy!\r\n");
-                if(flag && !node.contains(entry.baseName))
+                if(!node.contains(entry.baseName))
                     node.addNode(entry.baseName);
             }
             else
@@ -198,11 +192,12 @@ private :
     void run()
     {
         auto flag = false;
+        _main.logInfo("Удаление " ~ _node.text ~ "... ");
         if(!_node.hasNodes)
-            flag = FDelete(("/master" ~ _path).toStringz());
+            flag = FDelete(("/master/" ~ _path).toStringz());
         else
-            flag = DeleteDir(("/master" ~ _path).toStringz());
-        _main.logInfo("Удаление " ~ _node.text ~ (flag ? " успешно!\r\n" : " ошибка!\r\n"));
+            flag = DeleteDir(("/master/" ~ _path).toStringz());
+        _main.logInfo((flag ? "Выполнено" : "Ошибка") ~ "\r\n");
         if(flag)
         {
             _node.remove();
@@ -222,6 +217,7 @@ private:
     Button _importButton;
     Button _editButton;
     Button _removeButton;
+    //TextBox _testText;
     bool _loaded;
     string _filename;
     Config _config;
@@ -355,6 +351,12 @@ private:
         _removeButton.enabled = false;
         _removeButton.click.attach(&removeFile);
         removeRow.addColumn(_removeButton);
+        /*auto testRow = buttonPanel.addRow();
+        testRow.marginTop = 4;
+        testRow.height = 25;
+        _testText = new TextBox();
+        _testText.width = 60;
+        testRow.addColumn(_testText);*/
     }
 
     override protected void onClose(EventArgs e)
@@ -371,9 +373,9 @@ private:
             logInfo("Выполнено!\r\n");
         else
             logInfo("Ошибка!\r\n");
-        /*log("Подключение функции лога... ");
+        /*logInfo("Подключение функции лога... ");
         SetFileLogHandler("LOG.log".toStringz(), &log);
-        log("Выполнено!\n");*/
+        logInfo("Выполнено!\r\n");*/
     }
 
     void destroy()
@@ -383,6 +385,7 @@ private:
             Unmount("/master".toStringz());
             Unmount("/fs".toStringz());
         }
+        //DestroyFileLogHandler(null);
         DestroyFileSystem();
     }
 
@@ -397,6 +400,7 @@ private:
     void onSelectEntry(Control sender, TreeNodeChangedEventArgs e)
     {
         auto node = _fileTree.selectedNode;
+        auto path = buildPath(node).chompPrefix("/root");
         if(node is null)
         {
             _exportButton.enabled = false;
@@ -407,6 +411,7 @@ private:
         }
         _exportButton.enabled = true;
         _removeButton.enabled = true;
+        /*auto md5str = "";
         if(node.hasNodes)
         {
             _importButton.enabled = true;
@@ -416,7 +421,9 @@ private:
         {
             _importButton.enabled = false;
             _editButton.enabled = true;
+            md5str = getMD5("/master/" ~ path);
         }
+        _testText.text = md5str;*/
     }
 
     void chooseFile(Control sender, EventArgs e)
@@ -446,7 +453,7 @@ private:
         auto node = _fileTree.selectedNode;
         if(node is null)
             return;
-        auto path = buildPath(node).chompPrefix("/root");
+        auto path = buildPath(node).chompPrefix("/root/");
         auto task = new ExportTask(this, node, path);
         task.start();
     }
@@ -456,7 +463,7 @@ private:
         auto node = _fileTree.selectedNode;
         if(node is null || !node.hasNodes)
             return;
-        auto path = buildPath(node).chompPrefix("/root");
+        auto path = buildPath(node).chompPrefix("/root/").chompPrefix("/root");
         auto task = new ImportTask(this, node, path);
         task.start();
     }
@@ -466,7 +473,7 @@ private:
         auto node = _fileTree.selectedNode;
         if(node is null || node.hasNodes)
             return;
-        auto path = buildPath(node).chompPrefix("/root");
+        auto path = buildPath(node).chompPrefix("/root/");
         auto tempFile = "/fs/temp/" ~ path;
         auto flag = Copy(("/master/" ~ path).toStringz(), tempFile.toStringz());
         if(!flag)
@@ -488,7 +495,7 @@ private:
         auto node = _fileTree.selectedNode;
         if(node is null)
             return;
-        auto path = buildPath(node).chompPrefix("/root");
+        auto path = buildPath(node).chompPrefix("/root/");
         auto task = new DeleteTask(this, node, path);
         task.start();
     }
@@ -569,6 +576,20 @@ bool contains(TreeNode node, string name)
             return true;
     return false;
 }
+
+/*string getMD5(string path)
+{
+    auto file = FOpen(path.toStringz(), "r");
+    scope(exit) FClose(file);
+    ubyte[16] md5;
+    auto res = FGetMD5(file, &md5);
+    if(!res)
+        return "";
+    auto md5str = "";
+    foreach(el; md5)
+        md5str ~= format("%.2x", el);
+    return md5str;
+}*/
 
 /*extern (C++) void log(const (char)* message, ...)
 {

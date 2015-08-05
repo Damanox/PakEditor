@@ -22,6 +22,32 @@ extern (C++)
         public long data9;
         public long data10;
     }
+	
+	public struct File
+    {
+        public uint pntr;
+        public uint cnt;
+        public uint base;
+        public uint flag;
+        public uint file;
+        public uint charbuf;
+        public uint bufsize;
+        public uint tmpfname;
+    }
+
+    public struct FileInfo
+    {
+        public uint dwFileAttributes;
+        public ulong ftCreationTime;
+        public ulong ftLastAccessTime;
+        public ulong ftLastWriteTime;
+        public uint dwVolumeSerialNumber;
+        public uint nFileSizeHigh;
+        public uint nFileSizeLow;
+        public uint nNumberOfLinks;
+        public uint nFileIndexHigh;
+        public uint nFileIndexLow;
+    }
     
     alias void function (const (char)*, ...) lf;
 
@@ -34,6 +60,11 @@ extern (C++)
     static int FindFirst (const (char)*, afs_finddata*);
     static int FindNext(int, afs_finddata*);
     static const(char)* GetFileName(const (afs_finddata)*);
+    static xlpack.File* FOpen(const (char)*, const (char)*);
+    static void FClose(ref xlpack.File*);
+    pragma(mangle, "?FGetMD5@@YA_NPAUFile@@QAD@Z")
+    static bool FGetMD5(xlpack.File*, ubyte[16]*);
+    static bool FGetStat(xlpack.File*, xlpack.FileInfo*);
     static void DestroyFileSystem();
     static bool FDelete(const (char)*);
     static bool DeleteDir(const (char)*);
